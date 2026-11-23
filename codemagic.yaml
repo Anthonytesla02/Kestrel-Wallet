@@ -2,7 +2,7 @@ workflows:
   android-apk:
     name: Kestrel Wallet Android APK
     max_build_duration: 30
-    instance_type: linux_x2
+    instance_type: mac_mini_m2
     environment:
       node: 22
       java: 21
@@ -21,7 +21,8 @@ workflows:
           npx cap sync android
       - name: Configure local.properties for Android SDK
         script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+          SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Library/Android/sdk}}"
+          echo "sdk.dir=$SDK_DIR" > android/local.properties
       - name: Build Android APK (Debug & Release)
         script: |
           cd android
