@@ -30,10 +30,17 @@
     --accent-hover: #0ea5e9;
   }
 
-  html {
+  html, body {
     font-family: var(--font-body);
     background-color: var(--bg-canvas);
     color: var(--text-primary);
+    overscroll-behavior-y: contain;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button, [role="button"], nav, [role="tab"] {
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
 
   h1, h2, h3, h4, .font-display {
@@ -73,9 +80,44 @@
   scrollbar-width: none;
 }
 
-/* Safe area padding for mobile bottom bar */
+/* Safe area padding for mobile top & bottom bars */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Cool skeleton shimmer */
+@keyframes kestrel-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(203, 213, 225, 0.35) 25%,
+    rgba(226, 232, 240, 0.7) 50%,
+    rgba(203, 213, 225, 0.35) 75%
+  );
+  background-size: 200% 100%;
+  animation: kestrel-shimmer 1.35s ease-in-out infinite;
+}
+
+.dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.55) 25%,
+    rgba(51, 65, 85, 0.8) 50%,
+    rgba(30, 41, 59, 0.55) 75%
+  );
+  background-size: 200% 100%;
+  animation: kestrel-shimmer 1.35s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

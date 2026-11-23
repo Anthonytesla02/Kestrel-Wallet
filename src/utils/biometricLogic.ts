@@ -14,6 +14,11 @@ export function shouldStartLocked(search: string): boolean {
   return params.get('autostart') !== '1';
 }
 
+export function shouldShowSplash(search: string): boolean {
+  const params = new URLSearchParams(search);
+  return params.get('autostart') !== '1';
+}
+
 export function getBiometricActionLabel(
   method: BiometricMethod,
   phase: BiometricPhase,

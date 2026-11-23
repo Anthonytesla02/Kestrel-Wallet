@@ -7,6 +7,7 @@ interface VaultsPanelProps {
   vaults: SavingsVault[];
   cards: WalletCard[];
   displayCurrency: CurrencyCode;
+  hideBalances?: boolean;
   onCreateVault: (vault: Omit<SavingsVault, 'id'>) => void;
   onDeleteVault: (vaultId: string) => void;
   onTransferVault: (params: {
@@ -21,6 +22,7 @@ export function VaultsPanel({
   vaults,
   cards,
   displayCurrency,
+  hideBalances = false,
   onCreateVault,
   onDeleteVault,
   onTransferVault,
@@ -155,8 +157,9 @@ export function VaultsPanel({
                         {vault.name}
                       </h3>
                       <p className="font-mono-tabular text-xs text-[#4a5a70] dark:text-[#92a4bc] mt-0.5">
-                        {formatCurrency(vault.currentAmount, vault.currency)} /{' '}
-                        {formatCurrency(vault.targetAmount, vault.currency)}
+                        {hideBalances
+                          ? '•••••• / ••••••'
+                          : `${formatCurrency(vault.currentAmount, vault.currency)} / ${formatCurrency(vault.targetAmount, vault.currency)}`}
                       </p>
                       <p className="text-[11px] text-[#4a5a70] dark:text-[#92a4bc] mt-0.5">
                         Target · {vault.targetDate ?? 'Flexible'}

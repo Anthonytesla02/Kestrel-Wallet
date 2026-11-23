@@ -16,6 +16,7 @@ interface CardVisualProps {
   isFlipped?: boolean;
   onFlipToggle?: () => void;
   compact?: boolean;
+  hideBalances?: boolean;
 }
 
 function NetworkMark({ network, isLightSurface }: { network: CardNetwork; isLightSurface: boolean }) {
@@ -98,6 +99,7 @@ export function CardVisual({
   isFlipped = false,
   onFlipToggle,
   compact = false,
+  hideBalances = false,
 }: CardVisualProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const [showCvv, setShowCvv] = useState(false);
@@ -228,7 +230,7 @@ export function CardVisual({
                     compact ? 'text-lg' : 'text-xl sm:text-2xl'
                   }`}
                 >
-                  {formatCurrency(displayAmount, targetCurrency)}
+                  {hideBalances ? '••••••' : formatCurrency(displayAmount, targetCurrency)}
                 </p>
               </div>
             </div>
@@ -338,7 +340,9 @@ export function CardVisual({
                     Monthly Cap
                   </p>
                   <p className="font-mono-tabular text-xs font-semibold mt-0.5 truncate">
-                    {formatCurrency(card.monthlyLimit, card.currency, { compact: true })}
+                    {hideBalances
+                      ? '••••'
+                      : formatCurrency(card.monthlyLimit, card.currency, { compact: true })}
                   </p>
                 </div>
               </div>

@@ -19,6 +19,7 @@ interface ActivityPanelProps {
   cards: WalletCard[];
   selectedCardId?: string | 'all';
   compact?: boolean;
+  hideBalances?: boolean;
   onDeleteTransaction?: (txId: string) => void;
   onViewAll?: () => void;
 }
@@ -62,6 +63,7 @@ export function ActivityPanel({
   cards,
   selectedCardId = 'all',
   compact = false,
+  hideBalances = false,
   onDeleteTransaction,
   onViewAll,
 }: ActivityPanelProps) {
@@ -219,9 +221,11 @@ export function ActivityPanel({
                           : 'text-[#0d1726] dark:text-[#f0f5fa]'
                       }`}
                     >
-                      {formatCurrency(isCredit ? tx.amount : -tx.amount, tx.currency, {
-                        showSign: true,
-                      })}
+                      {hideBalances
+                        ? '•••••'
+                        : formatCurrency(isCredit ? tx.amount : -tx.amount, tx.currency, {
+                            showSign: true,
+                          })}
                     </p>
                     <p className="font-mono-tabular text-[11px] text-[#4a5a70] dark:text-[#92a4bc]">
                       {tx.referenceCode}

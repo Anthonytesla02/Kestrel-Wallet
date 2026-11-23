@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Cobalt Sky Rounded Badge sized cleanly inside Android 12+ SplashScreen circular safe zone -->
+    <path android:pathData="M38,24 H70 A14,14 0 0 1 84,38 V70 A14,14 0 0 1 70,84 H38 A14,14 0 0 1 24,70 V38 A14,14 0 0 1 38,24 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="24"
+                android:startY="24"
+                android:endX="84"
+                android:endY="84"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#0EA5E9" />
+                <item android:offset="1.0" android:color="#0284C7" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Left Spine -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M39.5,38.0 C39.5,36.6 40.6,35.5 42.0,35.5 H45.0 C46.4,35.5 47.5,36.6 47.5,38.0 V70.0 C47.5,71.4 46.4,72.5 45.0,72.5 H42.0 C40.6,72.5 39.5,71.4 39.5,70.0 Z" />
+
+    <!-- Upper Wing -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M49.5,54.2 L65.8,37.4 C66.6,36.6 68.0,37.1 68.2,38.2 L69.0,43.0 C69.1,43.8 68.8,44.7 68.2,45.3 L55.0,58.2 Z" />
+
+    <!-- Lower Blade -->
+    <path android:pathData="M49.5,54.2 L55.9,52.1 L68.5,70.0 C69.1,70.9 68.5,72.2 67.3,72.2 H62.0 C61.2,72.2 60.4,71.8 59.9,71.1 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="49.5"
+                android:startY="52.1"
+                android:endX="68.5"
+                android:endY="72.2"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#E0F2FE" />
+                <item android:offset="1.0" android:color="#BAE6FD" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

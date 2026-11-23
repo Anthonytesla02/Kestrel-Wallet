@@ -5,13 +5,16 @@ import {
   getBiometricActionLabel,
   getBiometricStatusCopy,
   mapNativeBiometricError,
+  shouldShowSplash,
   shouldStartLocked,
 } from './biometricLogic';
 
-test('shouldStartLocked defaults to true and respects autostart=1', () => {
+test('shouldStartLocked and shouldShowSplash default to true and respect autostart=1', () => {
   assert.equal(shouldStartLocked(''), true);
   assert.equal(shouldStartLocked('?foo=bar'), true);
   assert.equal(shouldStartLocked('?autostart=1'), false);
+  assert.equal(shouldShowSplash(''), true);
+  assert.equal(shouldShowSplash('?autostart=1'), false);
 });
 
 test('getBiometricActionLabel returns clear labels across methods, phases, and native Android', () => {

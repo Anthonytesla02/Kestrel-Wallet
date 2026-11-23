@@ -9,6 +9,7 @@ interface InsightsPanelProps {
   cards: WalletCard[];
   transactions: Transaction[];
   displayCurrency: CurrencyCode;
+  hideBalances?: boolean;
 }
 
 const CATEGORY_COLORS: Record<TransactionCategory, string> = {
@@ -20,7 +21,12 @@ const CATEGORY_COLORS: Record<TransactionCategory, string> = {
   Deposits: '#14b8a6',
 };
 
-export function InsightsPanel({ cards, transactions, displayCurrency }: InsightsPanelProps) {
+export function InsightsPanel({
+  cards,
+  transactions,
+  displayCurrency,
+  hideBalances = false,
+}: InsightsPanelProps) {
   const breakdown = calculateCategoryBreakdown(transactions, displayCurrency);
   const summary = calculateWalletSummary(cards, displayCurrency);
   const totalOutflow = breakdown.reduce((acc, item) => acc + item.amount, 0);
@@ -81,7 +87,9 @@ export function InsightsPanel({ cards, transactions, displayCurrency }: Insights
               <div className="absolute text-center">
                 <p className="text-[11px] text-[#4a5a70] dark:text-[#92a4bc]">Total Spent</p>
                 <p className="font-display text-base font-bold font-mono-tabular text-[#0d1726] dark:text-[#f0f5fa]">
-                  {formatCurrency(totalOutflow, displayCurrency, { compact: true })}
+                  {hideBalances
+                    ? '•••••'
+                    : formatCurrency(totalOutflow, displayCurrency, { compact: true })}
                 </p>
               </div>
             </div>
@@ -99,7 +107,7 @@ export function InsightsPanel({ cards, transactions, displayCurrency }: Insights
                       {item.category}
                     </span>
                     <span className="font-mono-tabular text-[#4a5a70] dark:text-[#92a4bc]">
-                      {formatCurrency(item.amount, displayCurrency)} · {item.percentage}%
+                      {hideBalances ? `•••• · ${item.percentage}%` : `${formatCurrency(item.amount, displayCurrency)} · ${item.percentage}%`}
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-[#e8eef5] dark:bg-[#182538] overflow-hidden">
@@ -152,8 +160,9 @@ export function InsightsPanel({ cards, transactions, displayCurrency }: Insights
                     </span>
                   </span>
                   <span className="font-mono-tabular text-[#4a5a70] dark:text-[#92a4bc]">
-                    {formatCurrency(card.monthlySpent, card.currency)} /{' '}
-                    {formatCurrency(card.monthlyLimit, card.currency)}
+                    {hideBalances
+                      ? '•••• / ••••'
+                      : `${formatCurrency(card.monthlySpent, card.currency)} / ${formatCurrency(card.monthlyLimit, card.currency)}`}
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-[#e8eef5] dark:bg-[#182538] overflow-hidden">

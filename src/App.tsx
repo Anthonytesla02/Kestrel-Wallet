@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   Activity,
   BarChart3,
   Check,
-  CreditCard,
+  Eye,
+  EyeOff,
   Lock,
   Moon,
   PiggyBank,
   Plus,
+  RefreshCw,
   RotateCcw,
+  Sparkles,
   Sun,
   Wallet,
   X,
@@ -43,7 +46,11 @@ import { ActivityPanel } from './components/ActivityPanel';
 import { VaultsPanel } from './components/VaultsPanel';
 import { InsightsPanel } from './components/InsightsPanel';
 import { BiometricLockScreen } from './components/BiometricLockScreen';
-import { shouldStartLocked } from './utils/biometricLogic';
+import { WalletSkeleton } from './components/WalletSkeleton';
+import { CardAddedCelebration } from './components/CardAddedCelebration';
+import { SplashScreen } from './components/SplashScreen';
+import { KestrelLogo } from './components/KestrelLogo';
+import { shouldShowSplash, shouldStartLocked } from './utils/biometricLogic';
 
 const STORAGE_KEY = 'kestrel_wallet_v1';
 
@@ -54,6 +61,7 @@ interface PersistedWalletState {
   selectedCardId: string | null;
   displayCurrency: CurrencyCode;
   darkMode: boolean;
+  hideBalances: boolean;
 }
 
 function loadInitialState(): PersistedWalletState {
@@ -69,6 +77,7 @@ function loadInitialState(): PersistedWalletState {
           selectedCardId: parsed.selectedCardId ?? parsed.cards[0]?.id ?? null,
           displayCurrency: parsed.displayCurrency ?? 'USD',
           darkMode: Boolean(parsed.darkMode),
+          hideBalances: Boolean(parsed.hideBalances),
         };
       }
     }
@@ -82,6 +91,7 @@ function loadInitialState(): PersistedWalletState {
     selectedCardId: INITIAL_CARDS[0].id,
     displayCurrency: 'USD',
     darkMode: false,
+    hideBalances: false,
   };
 }
 
@@ -100,13 +110,23 @@ export default function App() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(initial.selectedCardId);
   const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>(initial.displayCurrency);
   const [darkMode, setDarkMode] = useState<boolean>(initial.darkMode);
+  const [hideBalances, setHideBalances] = useState<boolean>(initial.hideBalances);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('wallet');
+  const [showSplash, setShowSplash] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? shouldShowSplash(window.location.search) : true
+  );
+  const [splashExited, setSplashExited] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? !shouldShowSplash(window.location.search) : false
+  );
   const [isLocked, setIsLocked] = useState<boolean>(() =>
     typeof window !== 'undefined' ? shouldStartLocked(window.location.search) : true
   );
+  const [isHydrating, setIsHydrating] = useState<boolean>(false);
+  const hydrateTimerRef = useRef<number | null>(null);
   const [cardFormOpen, setCardFormOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<WalletCard | null>(null);
+  const [recentlyAddedCard, setRecentlyAddedCard] = useState<WalletCard | null>(null);
   const [cardToDelete, setCardToDelete] = useState<WalletCard | null>(null);
   const [actionSheet, setActionSheet] = useState<{
     open: boolean;
@@ -116,6 +136,25 @@ export default function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [toast, setToast] = useState<{ message: string; undoCard?: WalletCard } | null>(null);
+
+  const triggerHydration = useCallback((durationMs = 520) => {
+    if (hydrateTimerRef.current) {
+      window.clearTimeout(hydrateTimerRef.current);
+    }
+    setIsHydrating(true);
+    hydrateTimerRef.current = window.setTimeout(() => {
+      setIsHydrating(false);
+      hydrateTimerRef.current = null;
+    }, durationMs);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hydrateTimerRef.current) {
+        window.clearTimeout(hydrateTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
@@ -130,12 +169,13 @@ export default function App() {
         selectedCardId,
         displayCurrency,
         darkMode,
+        hideBalances,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {
       // Ignore storage quota errors
     }
-  }, [cards, transactions, vaults, selectedCardId, displayCurrency, darkMode]);
+  }, [cards, transactions, vaults, selectedCardId, displayCurrency, darkMode, hideBalances]);
 
   useEffect(() => {
     if (!toast) return;
@@ -182,7 +222,7 @@ export default function App() {
         return [newCard, ...base];
       });
       setSelectedCardId(newCard.id);
-      setToast({ message: `Added ${newCard.nickname}` });
+      setRecentlyAddedCard(newCard);
     }
     setCardFormOpen(false);
     setEditingCard(null);
@@ -303,18 +343,16 @@ export default function App() {
           isLocked ? 'blur-md pointer-events-none select-none overflow-hidden max-h-screen' : ''
         }`}
       >
-      {/* Top Navigation Bar — Strictly 3 Zones, compact 56px mobile / 64px desktop */}
-      <header className="sticky top-0 z-30 h-14 sm:h-16 bg-white/85 dark:bg-[#111b2a]/85 backdrop-blur-md border-b border-[#dce4ee] dark:border-[#213248]">
-        <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-8">
+      {/* Top Navigation Bar — Strictly 3 Zones with safe-area padding outside fixed inner bar */}
+      <header className="sticky top-0 z-30 pt-safe bg-white/90 dark:bg-[#111b2a]/90 backdrop-blur-xl border-b border-[#dce4ee] dark:border-[#213248]">
+        <div className="max-w-7xl mx-auto h-14 sm:h-16 px-4 sm:px-6 flex items-center justify-between gap-4 sm:gap-8">
           {/* Zone 1: Brand Wordmark */}
           <button
             type="button"
             onClick={() => setActiveTab('wallet')}
-            className="font-display text-lg font-extrabold tracking-tight text-[#0d1726] dark:text-[#f0f5fa] whitespace-nowrap shrink-0 flex items-center gap-2"
+            className="font-display text-lg font-extrabold tracking-tight text-[#0d1726] dark:text-[#f0f5fa] whitespace-nowrap shrink-0 flex items-center gap-2.5 active:scale-[0.97] transition-transform"
           >
-            <span className="h-7 w-7 rounded-lg bg-sky-600 text-white flex items-center justify-center">
-              <CreditCard className="h-4 w-4" />
-            </span>
+            <KestrelLogo className="h-8 w-8 shadow-xs shadow-sky-600/20 rounded-lg" />
             <span>Kestrel</span>
           </button>
 
@@ -342,13 +380,13 @@ export default function App() {
             })}
           </nav>
 
-          {/* Zone 3: Single Primary Action / Account Trigger */}
+          {/* Zone 3: Single Primary Account Trigger */}
           <div className="flex items-center shrink-0">
             <button
               type="button"
               onClick={() => setProfileOpen(true)}
               aria-label="Open wallet preferences and profile"
-              className="h-10 pl-1.5 pr-3 rounded-xl hover:bg-[#e8eef5] dark:hover:bg-[#182538] flex items-center gap-2.5 transition-colors whitespace-nowrap shrink-0"
+              className="h-10 pl-1.5 pr-2.5 sm:pr-3 rounded-full bg-[#f3f6fa] dark:bg-[#182538] border border-[#dce4ee] dark:border-[#213248] hover:bg-[#e8eef5] dark:hover:bg-[#213248] flex items-center gap-2 transition-all active:scale-95 whitespace-nowrap shrink-0"
             >
               {!avatarFailed ? (
                 <img
@@ -356,7 +394,7 @@ export default function App() {
                   alt={USER_PROFILE.name}
                   referrerPolicy="no-referrer"
                   onError={() => setAvatarFailed(true)}
-                  className="h-7 w-7 rounded-full object-cover border border-[#dce4ee] dark:border-[#213248]"
+                  className="h-7 w-7 rounded-full object-cover border border-white/60 dark:border-slate-700"
                 />
               ) : (
                 <span className="h-7 w-7 rounded-full bg-sky-600 text-white text-xs font-bold flex items-center justify-center">
@@ -372,291 +410,345 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-3.5 sm:pt-7 pb-24 md:pb-12 space-y-4 sm:space-y-6">
-        {/* Hero Wallet Balance Summary Strip */}
-        <section
-          aria-label="Wallet Summary"
-          className="rounded-3xl bg-white dark:bg-[#111b2a] border border-[#dce4ee] dark:border-[#213248] p-4 sm:p-6"
-        >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5 sm:gap-5">
-            <div>
-              <p className="text-xs font-medium text-[#4a5a70] dark:text-[#92a4bc]">
-                Total Available Balance · {summary.activeCardsCount} active{' '}
-                {summary.activeCardsCount === 1 ? 'card' : 'cards'}
-                {summary.frozenCardsCount > 0 ? ` · ${summary.frozenCardsCount} frozen` : ''}
-              </p>
-              <div className="flex flex-wrap items-baseline gap-3 mt-1">
-                <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight font-mono-tabular text-[#0d1726] dark:text-[#f0f5fa]">
-                  {formatCurrency(summary.totalAvailable, displayCurrency)}
-                </h1>
-                <span className="text-xs text-[#4a5a70] dark:text-[#92a4bc] font-mono-tabular">
-                  {formatCurrency(totalVaultBalance, displayCurrency)} in vaults
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Key KPI stats */}
-              <div className="flex items-center gap-6 pr-2">
-                <div>
-                  <p className="text-[11px] text-[#4a5a70] dark:text-[#92a4bc]">Monthly Spend</p>
-                  <p className="font-mono-tabular text-sm sm:text-base font-bold text-[#0d1726] dark:text-[#f0f5fa]">
-                    {formatCurrency(summary.totalMonthlySpent, displayCurrency)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] text-[#4a5a70] dark:text-[#92a4bc]">Credit Used</p>
-                  <p className="font-mono-tabular text-sm sm:text-base font-bold text-[#0d1726] dark:text-[#f0f5fa]">
-                    {formatCurrency(summary.totalCreditDebt, displayCurrency)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Workspace controls: Currency + Theme */}
-              <div className="flex items-center gap-2">
-                <div
-                  className="flex items-center p-1 rounded-xl bg-[#e8eef5] dark:bg-[#182538]"
-                  role="group"
-                  aria-label="Display currency"
-                >
-                  {(['USD', 'EUR', 'GBP'] as const).map((curr) => (
-                    <button
-                      key={curr}
-                      type="button"
-                      onClick={() => setDisplayCurrency(curr)}
-                      aria-pressed={displayCurrency === curr}
-                      className={`min-h-[36px] px-2.5 rounded-lg text-xs font-semibold transition-colors ${
-                        displayCurrency === curr
-                          ? 'bg-white dark:bg-[#111b2a] text-[#0d1726] dark:text-[#f0f5fa] shadow-xs'
-                          : 'text-[#4a5a70] dark:text-[#92a4bc]'
-                      }`}
-                    >
-                      {curr}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setDarkMode((prev) => !prev)}
-                  aria-label={darkMode ? 'Switch to light theme' : 'Switch to dark theme'}
-                  className="min-h-[44px] min-w-[44px] rounded-xl bg-[#e8eef5] dark:bg-[#182538] text-[#0d1726] dark:text-[#f0f5fa] flex items-center justify-center hover:opacity-90 transition-opacity"
-                >
-                  {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Tabbed Content Views with Smooth Transitions */}
-        <AnimatePresence mode="wait">
-          {activeTab === 'wallet' && (
-            <motion.div
-              key="tab-wallet"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-3.5 sm:pt-7 pb-28 md:pb-12 space-y-4 sm:space-y-6">
+        {isHydrating ? (
+          <WalletSkeleton />
+        ) : (
+          <>
+            {/* Hero Wallet Balance Summary Strip */}
+            <section
+              aria-label="Wallet Summary"
+              className="rounded-3xl bg-white dark:bg-[#111b2a] border border-[#dce4ee] dark:border-[#213248] p-4 sm:p-6 shadow-xs"
             >
-              <div className="lg:col-span-7 space-y-6">
-                <CardDeck
-                  cards={cards}
-                  selectedCardId={selectedCardId}
-                  displayCurrency={displayCurrency}
-                  onSelectCard={setSelectedCardId}
-                  onAddCard={() => {
-                    setEditingCard(null);
-                    setCardFormOpen(true);
-                  }}
-                  onEditCard={(card) => {
-                    setEditingCard(card);
-                    setCardFormOpen(true);
-                  }}
-                  onDeleteCard={(card) => setCardToDelete(card)}
-                  onToggleFreeze={handleToggleFreeze}
-                  onSetDefault={handleSetDefault}
-                  onStartAction={(kind, card) =>
-                    setActionSheet({ open: true, kind, cardId: card.id })
-                  }
-                />
-              </div>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-[#4a5a70] dark:text-[#92a4bc]">
+                      Total Available Balance · {summary.activeCardsCount} active{' '}
+                      {summary.activeCardsCount === 1 ? 'card' : 'cards'}
+                      {summary.frozenCardsCount > 0 ? ` · ${summary.frozenCardsCount} frozen` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2.5 mt-1">
+                    <h1
+                      data-testid="total-balance-amount"
+                      className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight font-mono-tabular text-[#0d1726] dark:text-[#f0f5fa]"
+                    >
+                      {hideBalances
+                        ? '••••••'
+                        : formatCurrency(summary.totalAvailable, displayCurrency)}
+                    </h1>
+                    <button
+                      type="button"
+                      onClick={() => setHideBalances((prev) => !prev)}
+                      aria-label={hideBalances ? 'Show balances' : 'Hide balances'}
+                      aria-pressed={hideBalances}
+                      className="min-h-[44px] min-w-[44px] rounded-xl bg-[#f3f6fa] dark:bg-[#182538] hover:bg-[#e8eef5] dark:hover:bg-[#213248] text-[#4a5a70] dark:text-[#92a4bc] flex items-center justify-center transition-all active:scale-95 shrink-0"
+                    >
+                      {hideBalances ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#4a5a70] dark:text-[#92a4bc] font-mono-tabular mt-0.5">
+                    {hideBalances
+                      ? '•••• in vaults'
+                      : `${formatCurrency(totalVaultBalance, displayCurrency)} in vaults`}
+                  </p>
+                </div>
 
-              <div className="lg:col-span-5 space-y-6">
-                <ActivityPanel
-                  transactions={transactions}
-                  cards={cards}
-                  compact
-                  onDeleteTransaction={(txId) =>
-                    setTransactions((prev) => prev.filter((t) => t.id !== txId))
-                  }
-                  onViewAll={() => setActiveTab('activity')}
-                />
-
-                {/* Compact Savings Vaults Preview */}
-                <section
-                  aria-label="Savings Vaults Summary"
-                  className="rounded-3xl bg-white dark:bg-[#111b2a] border border-[#dce4ee] dark:border-[#213248] p-5 sm:p-6 space-y-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between lg:justify-end gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-[#dce4ee]/70 dark:border-[#213248]/70">
+                  {/* Key KPI stats */}
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-4 sm:gap-6 sm:pr-2">
                     <div>
-                      <h2 className="font-display text-base font-bold text-[#0d1726] dark:text-[#f0f5fa]">
-                        Savings Vaults
-                      </h2>
-                      <p className="text-xs text-[#4a5a70] dark:text-[#92a4bc]">
-                        {vaults.length} active reserves ·{' '}
-                        <span className="font-mono-tabular font-medium text-[#0d1726] dark:text-[#f0f5fa]">
-                          {formatCurrency(totalVaultBalance, displayCurrency)}
-                        </span>
+                      <p className="text-[11px] text-[#4a5a70] dark:text-[#92a4bc]">Monthly Spend</p>
+                      <p className="font-mono-tabular text-sm sm:text-base font-bold text-[#0d1726] dark:text-[#f0f5fa]">
+                        {hideBalances
+                          ? '••••'
+                          : formatCurrency(summary.totalMonthlySpent, displayCurrency)}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('vaults')}
-                      className="h-10 px-3 rounded-xl text-xs font-semibold text-sky-700 dark:text-sky-400 hover:bg-[#f3f6fa] dark:hover:bg-[#182538] transition-colors whitespace-nowrap"
-                    >
-                      Manage
-                    </button>
+                    <div>
+                      <p className="text-[11px] text-[#4a5a70] dark:text-[#92a4bc]">Credit Used</p>
+                      <p className="font-mono-tabular text-sm sm:text-base font-bold text-[#0d1726] dark:text-[#f0f5fa]">
+                        {hideBalances
+                          ? '••••'
+                          : formatCurrency(summary.totalCreditDebt, displayCurrency)}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="space-y-3">
-                    {vaults.slice(0, 2).map((vault) => {
-                      const pct = Math.min(
-                        100,
-                        Math.round((vault.currentAmount / vault.targetAmount) * 100)
-                      );
-                      return (
-                        <div key={vault.id} className="space-y-1.5">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-medium text-[#0d1726] dark:text-[#f0f5fa]">
-                              {vault.name}
-                            </span>
-                            <span className="font-mono-tabular text-[#4a5a70] dark:text-[#92a4bc]">
-                              {formatCurrency(vault.currentAmount, vault.currency)} · {pct}%
-                            </span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-[#e8eef5] dark:bg-[#182538] overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-sky-600 dark:bg-sky-400"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              </div>
-            </motion.div>
-          )}
+                  {/* Workspace controls: Currency + Refresh + Theme */}
+                  <div className="flex items-center justify-between sm:justify-end gap-2">
+                    <div
+                      className="flex items-center p-1 rounded-xl bg-[#e8eef5] dark:bg-[#182538]"
+                      role="group"
+                      aria-label="Display currency"
+                    >
+                      {(['USD', 'EUR', 'GBP'] as const).map((curr) => (
+                        <button
+                          key={curr}
+                          type="button"
+                          onClick={() => setDisplayCurrency(curr)}
+                          aria-pressed={displayCurrency === curr}
+                          className={`min-h-[36px] px-2.5 rounded-lg text-xs font-semibold transition-all active:scale-95 ${
+                            displayCurrency === curr
+                              ? 'bg-white dark:bg-[#111b2a] text-[#0d1726] dark:text-[#f0f5fa] shadow-xs'
+                              : 'text-[#4a5a70] dark:text-[#92a4bc]'
+                          }`}
+                        >
+                          {curr}
+                        </button>
+                      ))}
+                    </div>
 
-          {activeTab === 'activity' && (
-            <motion.div
-              key="tab-activity"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
-            >
-              <div className="lg:col-span-8">
-                <ActivityPanel
-                  transactions={transactions}
-                  cards={cards}
-                  onDeleteTransaction={(txId) => {
-                    setTransactions((prev) => prev.filter((t) => t.id !== txId));
-                    setToast({ message: 'Removed transaction entry' });
-                  }}
-                />
-              </div>
-              <div className="lg:col-span-4 space-y-4">
-                <div className="rounded-3xl bg-white dark:bg-[#111b2a] border border-[#dce4ee] dark:border-[#213248] p-5 space-y-3">
-                  <h3 className="font-display text-base font-bold text-[#0d1726] dark:text-[#f0f5fa]">
-                    Quick Actions
-                  </h3>
-                  <p className="text-xs text-[#4a5a70] dark:text-[#92a4bc]">
-                    Record a contactless payment, transfer, or card deposit directly into your
-                    ledger.
-                  </p>
-                  <div className="grid grid-cols-1 gap-2 pt-1">
-                    <button
-                      type="button"
-                      disabled={cards.length === 0}
-                      onClick={() =>
-                        setActionSheet({
-                          open: true,
-                          kind: 'pay',
-                          cardId: selectedCardId ?? cards[0]?.id ?? null,
-                        })
-                      }
-                      className="h-11 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white text-xs font-semibold transition-colors"
-                    >
-                      New Tap to Pay
-                    </button>
-                    <button
-                      type="button"
-                      disabled={cards.length === 0}
-                      onClick={() =>
-                        setActionSheet({
-                          open: true,
-                          kind: 'send',
-                          cardId: selectedCardId ?? cards[0]?.id ?? null,
-                        })
-                      }
-                      className="h-11 rounded-xl bg-[#f3f6fa] dark:bg-[#182538] border border-[#dce4ee] dark:border-[#213248] text-xs font-semibold text-[#0d1726] dark:text-[#f0f5fa] disabled:opacity-50"
-                    >
-                      Send to Contact
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHydration(520);
+                        }}
+                        aria-label="Refresh wallet balances"
+                        className="min-h-[44px] min-w-[44px] rounded-xl bg-[#e8eef5] dark:bg-[#182538] text-[#0d1726] dark:text-[#f0f5fa] flex items-center justify-center hover:opacity-90 transition-all active:scale-95"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDarkMode((prev) => !prev)}
+                        aria-label={darkMode ? 'Switch to light theme' : 'Switch to dark theme'}
+                        className="min-h-[44px] min-w-[44px] rounded-xl bg-[#e8eef5] dark:bg-[#182538] text-[#0d1726] dark:text-[#f0f5fa] flex items-center justify-center hover:opacity-90 transition-all active:scale-95"
+                      >
+                        {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </motion.div>
-          )}
+            </section>
 
-          {activeTab === 'vaults' && (
-            <motion.div
-              key="tab-vaults"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <VaultsPanel
-                vaults={vaults}
-                cards={cards}
-                displayCurrency={displayCurrency}
-                onCreateVault={handleCreateVault}
-                onDeleteVault={handleDeleteVault}
-                onTransferVault={handleVaultTransfer}
-              />
-            </motion.div>
-          )}
+            {/* Tabbed Content Views with Smooth Transitions */}
+            <AnimatePresence mode="wait">
+              {activeTab === 'wallet' && (
+                <motion.div
+                  key="tab-wallet"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                  className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
+                >
+                  <div className="lg:col-span-7 space-y-6">
+                    <CardDeck
+                      cards={cards}
+                      selectedCardId={selectedCardId}
+                      displayCurrency={displayCurrency}
+                      hideBalances={hideBalances}
+                      onSelectCard={setSelectedCardId}
+                      onAddCard={() => {
+                        setEditingCard(null);
+                        setCardFormOpen(true);
+                      }}
+                      onEditCard={(card) => {
+                        setEditingCard(card);
+                        setCardFormOpen(true);
+                      }}
+                      onDeleteCard={(card) => setCardToDelete(card)}
+                      onToggleFreeze={handleToggleFreeze}
+                      onSetDefault={handleSetDefault}
+                      onStartAction={(kind, card) =>
+                        setActionSheet({ open: true, kind, cardId: card.id })
+                      }
+                    />
+                  </div>
 
-          {activeTab === 'insights' && (
-            <motion.div
-              key="tab-insights"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <InsightsPanel
-                cards={cards}
-                transactions={transactions}
-                displayCurrency={displayCurrency}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+                  <div className="lg:col-span-5 space-y-6">
+                    <ActivityPanel
+                      transactions={transactions}
+                      cards={cards}
+                      compact
+                      hideBalances={hideBalances}
+                      onDeleteTransaction={(txId) =>
+                        setTransactions((prev) => prev.filter((t) => t.id !== txId))
+                      }
+                      onViewAll={() => setActiveTab('activity')}
+                    />
+
+                    {/* Compact Savings Vaults Preview */}
+                    <section
+                      aria-label="Savings Vaults Summary"
+                      className="rounded-3xl bg-white dark:bg-[#111b2a] border border-[#dce4ee] dark:border-[#213248] p-5 sm:p-6 space-y-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h2 className="font-display text-base font-bold text-[#0d1726] dark:text-[#f0f5fa]">
+                            Savings Vaults
+                          </h2>
+                          <p className="text-xs text-[#4a5a70] dark:text-[#92a4bc]">
+                            {vaults.length} active reserves ·{' '}
+                            <span className="font-mono-tabular font-medium text-[#0d1726] dark:text-[#f0f5fa]">
+                              {hideBalances
+                                ? '••••'
+                                : formatCurrency(totalVaultBalance, displayCurrency)}
+                            </span>
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('vaults')}
+                          className="h-10 px-3 rounded-xl text-xs font-semibold text-sky-700 dark:text-sky-400 hover:bg-[#f3f6fa] dark:hover:bg-[#182538] transition-colors whitespace-nowrap"
+                        >
+                          Manage
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {vaults.slice(0, 2).map((vault) => {
+                          const pct = Math.min(
+                            100,
+                            Math.round((vault.currentAmount / vault.targetAmount) * 100)
+                          );
+                          return (
+                            <div key={vault.id} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-medium text-[#0d1726] dark:text-[#f0f5fa]">
+                                  {vault.name}
+                                </span>
+                                <span className="font-mono-tabular text-[#4a5a70] dark:text-[#92a4bc]">
+                                  {hideBalances
+                                    ? `•••• · ${pct}%`
+                                    : `${formatCurrency(vault.currentAmount, vault.currency)} · ${pct}%`}
+                                </span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-[#e8eef5] dark:bg-[#182538] overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-sky-600 dark:bg-sky-400"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'activity' && (
+                <motion.div
+                  key="tab-activity"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                  className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
+                >
+                  <div className="lg:col-span-8">
+                    <ActivityPanel
+                      transactions={transactions}
+                      cards={cards}
+                      hideBalances={hideBalances}
+                      onDeleteTransaction={(txId) => {
+                        setTransactions((prev) => prev.filter((t) => t.id !== txId));
+                        setToast({ message: 'Removed transaction entry' });
+                      }}
+                    />
+                  </div>
+                  <div className="lg:col-span-4 space-y-4">
+                    <div className="rounded-3xl bg-white dark:bg-[#111b2a] border border-[#dce4ee] dark:border-[#213248] p-5 space-y-3">
+                      <h3 className="font-display text-base font-bold text-[#0d1726] dark:text-[#f0f5fa]">
+                        Quick Actions
+                      </h3>
+                      <p className="text-xs text-[#4a5a70] dark:text-[#92a4bc]">
+                        Record a contactless payment, transfer, or card deposit directly into your
+                        ledger.
+                      </p>
+                      <div className="grid grid-cols-1 gap-2 pt-1">
+                        <button
+                          type="button"
+                          disabled={cards.length === 0}
+                          onClick={() =>
+                            setActionSheet({
+                              open: true,
+                              kind: 'pay',
+                              cardId: selectedCardId ?? cards[0]?.id ?? null,
+                            })
+                          }
+                          className="h-11 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.98] disabled:opacity-50 text-white text-xs font-semibold transition-all"
+                        >
+                          New Tap to Pay
+                        </button>
+                        <button
+                          type="button"
+                          disabled={cards.length === 0}
+                          onClick={() =>
+                            setActionSheet({
+                              open: true,
+                              kind: 'send',
+                              cardId: selectedCardId ?? cards[0]?.id ?? null,
+                            })
+                          }
+                          className="h-11 rounded-xl bg-[#f3f6fa] dark:bg-[#182538] border border-[#dce4ee] dark:border-[#213248] text-xs font-semibold text-[#0d1726] dark:text-[#f0f5fa] disabled:opacity-50 active:scale-[0.98] transition-all"
+                        >
+                          Send to Contact
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'vaults' && (
+                <motion.div
+                  key="tab-vaults"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <VaultsPanel
+                    vaults={vaults}
+                    cards={cards}
+                    displayCurrency={displayCurrency}
+                    hideBalances={hideBalances}
+                    onCreateVault={handleCreateVault}
+                    onDeleteVault={handleDeleteVault}
+                    onTransferVault={handleVaultTransfer}
+                  />
+                </motion.div>
+              )}
+
+              {activeTab === 'insights' && (
+                <motion.div
+                  key="tab-insights"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <InsightsPanel
+                    cards={cards}
+                    transactions={transactions}
+                    displayCurrency={displayCurrency}
+                    hideBalances={hideBalances}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
       </main>
 
-      {/* Mobile Fixed Bottom Navigation Bar (64px height, <=15% combined sticky cap) */}
+      {/* Mobile Fixed Bottom Navigation Bar with safe-area padding & native active indicator */}
       <nav
         aria-label="Mobile bottom navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-16 pb-safe bg-white/90 dark:bg-[#111b2a]/90 backdrop-blur-md border-t border-[#dce4ee] dark:border-[#213248]"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 pb-safe bg-white/95 dark:bg-[#111b2a]/95 backdrop-blur-xl border-t border-[#dce4ee] dark:border-[#213248] shadow-[0_-4px_20px_rgba(13,23,38,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.35)]"
       >
-        <div className="grid grid-cols-4 h-full items-center">
+        <div className="grid grid-cols-4 h-16 items-center px-2">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = activeTab === item.id;
@@ -666,14 +758,23 @@ export default function App() {
                 type="button"
                 onClick={() => setActiveTab(item.id)}
                 aria-current={active ? 'page' : undefined}
-                className={`h-full flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                className={`relative h-12 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all active:scale-95 ${
                   active
                     ? 'text-sky-600 dark:text-sky-400'
                     : 'text-[#4a5a70] dark:text-[#92a4bc]'
                 }`}
               >
-                <Icon className="h-5 w-5" strokeWidth={active ? 2.4 : 1.9} />
-                <span className="text-[11px] font-medium tracking-tight">{item.label}</span>
+                {active && (
+                  <motion.span
+                    layoutId="mobile-tab-indicator"
+                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                    className="absolute inset-x-3 inset-y-0.5 rounded-2xl bg-sky-500/10 dark:bg-sky-400/12"
+                  />
+                )}
+                <Icon className="relative z-10 h-5 w-5" strokeWidth={active ? 2.4 : 1.9} />
+                <span className="relative z-10 text-[11px] font-semibold tracking-tight">
+                  {item.label}
+                </span>
               </button>
             );
           })}
@@ -796,6 +897,19 @@ export default function App() {
 
                 <button
                   type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    setSplashExited(false);
+                    setShowSplash(true);
+                  }}
+                  className="w-full h-11 px-4 rounded-xl bg-[#f3f6fa] dark:bg-[#182538] hover:bg-[#e8eef5] dark:hover:bg-[#213248] text-sm font-medium text-[#0d1726] dark:text-[#f0f5fa] inline-flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                  <span>Replay Launch Splash</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleResetDemo}
                   className="w-full h-11 px-4 rounded-xl bg-[#f3f6fa] dark:bg-[#182538] hover:bg-[#e8eef5] dark:hover:bg-[#213248] text-sm font-medium text-[#0d1726] dark:text-[#f0f5fa] inline-flex items-center justify-center gap-2"
                 >
@@ -834,8 +948,29 @@ export default function App() {
       </AnimatePresence>
       </div>
 
-      {/* Biometric Launch & Re-Lock Overlay */}
-      <BiometricLockScreen locked={isLocked} onUnlock={() => setIsLocked(false)} />
+      <CardAddedCelebration
+        card={recentlyAddedCard}
+        displayCurrency={displayCurrency}
+        hideBalances={hideBalances}
+        onDismiss={() => setRecentlyAddedCard(null)}
+      />
+
+      {/* Biometric Launch & Re-Lock Overlay (ready instantly under lifting splash curtain) */}
+      <BiometricLockScreen
+        locked={isLocked && !showSplash}
+        instantEnter={!splashExited}
+        onUnlock={() => {
+          setIsLocked(false);
+          triggerHydration(520);
+        }}
+      />
+
+      {/* Animated Launch Splash Screen */}
+      <SplashScreen
+        visible={showSplash}
+        onComplete={() => setShowSplash(false)}
+        onAfterExit={() => setSplashExited(true)}
+      />
     </div>
   );
 }

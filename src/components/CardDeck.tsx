@@ -25,6 +25,7 @@ interface CardDeckProps {
   cards: WalletCard[];
   selectedCardId: string | null;
   displayCurrency: CurrencyCode;
+  hideBalances?: boolean;
   onSelectCard: (cardId: string) => void;
   onAddCard: () => void;
   onEditCard: (card: WalletCard) => void;
@@ -38,6 +39,7 @@ export function CardDeck({
   cards,
   selectedCardId,
   displayCurrency,
+  hideBalances = false,
   onSelectCard,
   onAddCard,
   onEditCard,
@@ -149,7 +151,7 @@ export function CardDeck({
           <button
             type="button"
             onClick={onAddCard}
-            className="h-11 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
+            className="h-11 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.97] text-white text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0"
           >
             <Plus className="h-4 w-4" />
             <span>Add Card</span>
@@ -187,6 +189,7 @@ export function CardDeck({
                 <CardVisual
                   card={activeCard}
                   displayCurrency={displayCurrency}
+                  hideBalances={hideBalances}
                   isFlipped={flippedCardId === activeCard.id}
                   onFlipToggle={() =>
                     setFlippedCardId((prev) => (prev === activeCard.id ? null : activeCard.id))
@@ -283,8 +286,9 @@ export function CardDeck({
                   Monthly Spend Limit
                 </span>
                 <span className="font-mono-tabular font-semibold text-[#0d1726] dark:text-[#f0f5fa]">
-                  {formatCurrency(activeCard.monthlySpent, activeCard.currency)} /{' '}
-                  {formatCurrency(activeCard.monthlyLimit, activeCard.currency)}
+                  {hideBalances
+                    ? '•••••• / ••••••'
+                    : `${formatCurrency(activeCard.monthlySpent, activeCard.currency)} / ${formatCurrency(activeCard.monthlyLimit, activeCard.currency)}`}
                 </span>
               </div>
               <div className="h-2 rounded-full bg-[#e8eef5] dark:bg-[#182538] overflow-hidden">
@@ -375,6 +379,7 @@ export function CardDeck({
                 <CardVisual
                   card={card}
                   displayCurrency={displayCurrency}
+                  hideBalances={hideBalances}
                   isFlipped={flippedCardId === card.id}
                   onFlipToggle={() => {
                     onSelectCard(card.id);
@@ -387,7 +392,9 @@ export function CardDeck({
                     <p className="text-xs font-medium text-[#4a5a70] dark:text-[#92a4bc] truncate">
                       {card.type === 'credit' ? 'Available Credit' : 'Balance'} ·{' '}
                       <span className="font-mono-tabular font-semibold text-[#0d1726] dark:text-[#f0f5fa]">
-                        {formatCurrency(getCardAvailableFunds(card), card.currency)}
+                        {hideBalances
+                          ? '••••••'
+                          : formatCurrency(getCardAvailableFunds(card), card.currency)}
                       </span>
                     </p>
                   </div>

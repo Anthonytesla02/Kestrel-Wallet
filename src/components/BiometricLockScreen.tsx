@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, CreditCard, KeyRound, ScanFace, ShieldCheck } from 'lucide-react';
+import { Check, KeyRound, ScanFace, ShieldCheck } from 'lucide-react';
+import { KestrelLogo } from './KestrelLogo';
 import {
   authenticateWithNativeBiometrics,
   checkNativeBiometricAvailability,
@@ -17,6 +18,7 @@ import { USER_PROFILE } from '../data/seedData';
 interface BiometricLockScreenProps {
   locked: boolean;
   onUnlock: () => void;
+  instantEnter?: boolean;
 }
 
 /**
@@ -223,7 +225,11 @@ function RealisticFaceGraphic({
   );
 }
 
-export function BiometricLockScreen({ locked, onUnlock }: BiometricLockScreenProps) {
+export function BiometricLockScreen({
+  locked,
+  onUnlock,
+  instantEnter = false,
+}: BiometricLockScreenProps) {
   const [method, setMethod] = useState<BiometricMethod>('fingerprint');
   const [phase, setPhase] = useState<BiometricPhase>('idle');
   const [progress, setProgress] = useState(0);
@@ -333,7 +339,7 @@ export function BiometricLockScreen({ locked, onUnlock }: BiometricLockScreenPro
       {locked && (
         <motion.div
           key="biometric-lock-overlay"
-          initial={{ opacity: 0 }}
+          initial={instantEnter ? { opacity: 1 } : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 1.02 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
@@ -343,7 +349,7 @@ export function BiometricLockScreen({ locked, onUnlock }: BiometricLockScreenPro
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#f3f6fa]/88 dark:bg-[#09101a]/92 backdrop-blur-2xl"
         >
           <motion.div
-            initial={{ y: 18, opacity: 0 }}
+            initial={instantEnter ? { y: 0, opacity: 1 } : { y: 18, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -12, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
@@ -351,9 +357,7 @@ export function BiometricLockScreen({ locked, onUnlock }: BiometricLockScreenPro
           >
             {/* Brand Header */}
             <div className="flex flex-col items-center">
-              <div className="h-11 w-11 rounded-2xl bg-sky-600 text-white flex items-center justify-center shadow-sm">
-                <CreditCard className="h-5 w-5" />
-              </div>
+              <KestrelLogo className="h-12 w-12 shadow-md shadow-sky-600/20 rounded-2xl" />
               <h1
                 id="biometric-lock-title"
                 className="font-display text-xl font-bold text-[#0d1726] dark:text-[#f0f5fa] mt-3"
