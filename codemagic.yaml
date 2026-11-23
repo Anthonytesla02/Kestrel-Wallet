@@ -9,7 +9,11 @@ workflows:
     scripts:
       - name: Install npm dependencies
         script: |
-          npm ci
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
       - name: Run wallet and biometric unit tests
         script: |
           npx --yes tsx --test src/utils/walletLogic.test.ts src/utils/biometricLogic.test.ts
