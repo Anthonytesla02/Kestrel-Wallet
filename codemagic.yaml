@@ -1,0 +1,47 @@
+workflows:
+  android-apk:
+    name: Kestrel Wallet Android APK
+    max_build_duration: 30
+    instance_type: linux_x2
+    environment:
+      node: 22
+      java: 21
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+      - name: Run wallet and biometric unit tests
+        script: |
+          npx --yes tsx --test src/utils/walletLogic.test.ts src/utils/biometricLogic.test.ts
+      - name: Build production web bundle
+        script: |
+          npm run build
+      - name: Sync Capacitor Android project
+        script: |
+          npx cap sync android
+      - name: Configure local.properties for Android SDK
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+      - name: Build Android APK (Debug & Release)
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          if [ -n "${CM_KEYSTORE_PATH:-}" ]; then
+            ./gradlew assembleRelease \
+              -Pandroid.injected.signing.store.file="$CM_KEYSTORE_PATH" \
+              -Pandroid.injected.signing.store.password="$CM_KEYSTORE_PASSWORD" \
+              -Pandroid.injected.signing.key.alias="$CM_KEY_ALIAS" \
+              -Pandroid.injected.signing.key.password="$CM_KEY_PASSWORD"
+          else
+            ./gradlew assembleRelease
+          fi
+    artifacts:
+      - android/app/build/outputs/apk/**/*.apk
+    publishing:
+      email:
+        recipients:
+          - andrewslartey002@gmail.com
+        notify:
+          success: true
+          failure: true

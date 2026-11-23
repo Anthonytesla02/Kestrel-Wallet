@@ -1,0 +1,9 @@
+{
+	"appId": "com.kestrel.wallet",
+	"appName": "Kestrel Wallet",
+	"webDir": "dist",
+	"android": {
+		"allowMixedContent": false,
+		"backgroundColor": "#09101a"
+	}
+}

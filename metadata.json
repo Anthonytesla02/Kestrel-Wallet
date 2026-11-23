@@ -1,0 +1,6 @@
+{
+  "name": "Kestrel Wallet",
+  "description": "A cool-toned mobile-first digital wallet for managing payment cards, contactless tap-to-pay, instant transfers, savings vaults, and spending insights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

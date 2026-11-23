@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kestrel Wallet</string>
+    <string name="title_activity_main">Kestrel Wallet</string>
+    <string name="package_name">com.kestrel.wallet</string>
+    <string name="custom_url_scheme">com.kestrel.wallet</string>
+</resources>

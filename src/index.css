@@ -1,0 +1,87 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+    /* 60-30-10 Cool Palette (Light Mode) */
+    --bg-canvas: #f3f6fa;      /* 60% Cool Ice White */
+    --bg-surface: #ffffff;     /* 30% Crisp Cool Surface */
+    --bg-recessed: #e8eef5;    /* 30% Recessed Cool Mist */
+    --border-hairline: #dce4ee;
+    --text-primary: #0d1726;
+    --text-secondary: #4a5a70;
+    --accent-primary: #0284c7; /* 10% Glacial Sapphire */
+    --accent-hover: #0369a1;
+  }
+
+  .dark {
+    /* 60-30-10 Cool Palette (Dark Mode) */
+    --bg-canvas: #09101a;      /* 60% Deep Arctic Night */
+    --bg-surface: #111b2a;     /* 30% Cool Slate Surface */
+    --bg-recessed: #182538;    /* 30% Elevated Cool Slate */
+    --border-hairline: #213248;
+    --text-primary: #f0f5fa;
+    --text-secondary: #92a4bc;
+    --accent-primary: #38bdf8; /* 10% Crisp Glacial Sky */
+    --accent-hover: #0ea5e9;
+  }
+
+  html {
+    font-family: var(--font-body);
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* 3D Card Flip Utilities */
+.perspective-1200 {
+  perspective: 1200px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Hide scrollbars cleanly while keeping scrollability */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area padding for mobile bottom bar */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
